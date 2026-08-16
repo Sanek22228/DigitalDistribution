@@ -1,0 +1,6 @@
+@DigitalDistribution_HostAddress = http://localhost:5053
+
+GET {{DigitalDistribution_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
