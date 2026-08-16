@@ -29,7 +29,7 @@ namespace DigitalDistribution.Controllers
         }
 
         // GET api/<UserController>/5
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
         public async Task<ActionResult<UserResponse>> Get(Guid id)
         {
             User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);

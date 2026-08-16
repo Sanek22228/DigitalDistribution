@@ -17,10 +17,10 @@ namespace DigitalDistribution
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+            var connectionString = builder.Configuration["ConnectionStrings:DefaultConnection"];
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseNpgsql(connectionString));
+            var movieApiKey = builder.Configuration["Movies:ServiceApiKey"];
 
             builder.Services.AddSingleton<PasswordHasher>();
 
