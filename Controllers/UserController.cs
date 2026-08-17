@@ -1,11 +1,12 @@
 ﻿using DigitalDistribution.Contracts;
 using DigitalDistribution.Data;
 using DigitalDistribution.Models;
+using Konscious.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
-using Konscious.Security.Cryptography;
+using System.Xml.Linq;
 
 namespace DigitalDistribution.Controllers
 {
@@ -23,9 +24,9 @@ namespace DigitalDistribution.Controllers
 
         // GET: api/<UserController>
         [HttpGet]
-        public List<User> Get()
+        public async Task<ActionResult<List<UserResponse>>> Get()
         {
-            return (_context.Users).ToList();
+            return await _context.Users.Select(u => new UserResponse(u.Login, u.Email)).ToListAsync();
         }
 
         // GET api/<UserController>/5
@@ -42,7 +43,10 @@ namespace DigitalDistribution.Controllers
         [HttpGet("{login}")]
         public async Task<ActionResult<List<UserResponse>>> Get(string login)
         {
-            List<UserResponse> matches = await _context.Users.Where(u => u.Login.Contains(login)).Select(u => new UserResponse(u.Login, u.Email)).ToListAsync();
+            List<UserResponse> matches = await _context.Users
+                .Where(u => EF.Functions.ILike(u.Login, $"%{login}%"))
+                .Select(u => new UserResponse(u.Login, u.Email))
+                .ToListAsync();
             if (matches.Count == 0)
                 return NotFound();
             return Ok(matches);
@@ -61,21 +65,29 @@ namespace DigitalDistribution.Controllers
             var passwordHash = _hasher.HashPassword(value.password);
             User curUser = new User(value.login, value.email,  passwordHash);
             _context.Users.Add(curUser);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok();
         }
 
         // PUT api/<UserController>/5
-        [HttpPut("{id}")]
-        public async Task<ActionResult> Put(Guid id, [FromBody] UpdateUserRequest value)
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult> Put(Guid id, [FromBody] UpdateUserRequest value) // ПРОВЕРИТЬ ЗАНЯТО ЛИ
         {
             User? curUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
             if (curUser == null)
                 return NotFound();
             if(!String.IsNullOrEmpty(value.email))
+            {
+                if (await _context.Users.AnyAsync(u => u.Email == value.email && u.Id != id))
+                    return Conflict("email is already taken");
                 curUser.Email = value.email;
+            }
             if (!String.IsNullOrEmpty(value.login))
+            {
+                if (await _context.Users.AnyAsync(u => u.Login == value.login && u.Id != id))
+                    return Conflict("login is already taken");
                 curUser.Login = value.login;
+            }
             if (!String.IsNullOrEmpty(value.password))
                 curUser.Password = _hasher.HashPassword(value.password);    
             await _context.SaveChangesAsync();
@@ -83,7 +95,7 @@ namespace DigitalDistribution.Controllers
         }
 
         // DELETE api/<UserController>/5
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
             User? curUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
