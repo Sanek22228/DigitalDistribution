@@ -13,5 +13,12 @@ namespace DigitalDistribution.Data
         public DbSet<Game> Games { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<Key> Keys { get; set; }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Key>()
+                .Property(c => c.Status)
+                .HasConversion<int>();
+            base.OnModelCreating(modelBuilder);
+        }
     }
 }

@@ -71,7 +71,7 @@ namespace DigitalDistribution.Controllers
 
         // PUT api/<UserController>/5
         [HttpPut("{id:guid}")]
-        public async Task<ActionResult> Put(Guid id, [FromBody] UpdateUserRequest value) // ПРОВЕРИТЬ ЗАНЯТО ЛИ
+        public async Task<ActionResult> Put(Guid id, [FromBody] UpdateUserRequest value)
         {
             User? curUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
             if (curUser == null)
