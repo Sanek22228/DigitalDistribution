@@ -66,8 +66,8 @@ namespace DigitalDistribution.Controllers
                         // 23503: insert or update on table "keys" violates foreign key constraint "keys_users_id_fkey"
                         if (pgEx.SqlState == "23503")
                             return NotFound("This game ID was not found.");
-                        // 23503: duplicate key value violates unique constraint "value"
-                        if (pgEx.SqlState == "23503")
+                        // 23505: duplicate key value violates unique constraint "value"
+                        if (pgEx.SqlState == "23505")
                             continue;
                     }
                     throw; // any other exception
@@ -86,7 +86,7 @@ namespace DigitalDistribution.Controllers
 
             key.Status = value.status;
             await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
 
         // DELETE api/<KeyController>/5
@@ -102,7 +102,7 @@ namespace DigitalDistribution.Controllers
 
             _context.Remove(key);
             await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
     }
 }

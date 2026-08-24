@@ -15,5 +15,6 @@ namespace DigitalDistribution.Models
         [Column(TypeName = "decimal(10,2)")]
         public decimal Price { get; set; }
         public ICollection<Key> Keys { get; set; } = new List<Key>();
+        public bool IsDeleted { get; set; } = false;
     }
 }

@@ -26,25 +26,25 @@ namespace DigitalDistribution.Controllers
         [HttpGet]
         public async Task<ActionResult<List<UserResponse>>> Get()
         {
-            return await _context.Users.Select(u => new UserResponse(u.Login, u.Email)).ToListAsync();
+            return await _context.Users.Where(u => u.IsDeleted != true).Select(u => new UserResponse(u.Login, u.Email)).ToListAsync();
         }
 
         // GET api/<UserController>/5
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<UserResponse>> Get(Guid id)
         {
-            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.IsDeleted != true);
             if (user == null)
                 return NotFound();
             return Ok(new UserResponse(user.Login, user.Email));
         }
-        
-        // GET api/<UserController>/username123
-        [HttpGet("{login}")]
+
+        // GET api/<UserController>/search/username123
+        [HttpGet("search/{login}")]
         public async Task<ActionResult<List<UserResponse>>> Get(string login)
         {
             List<UserResponse> matches = await _context.Users
-                .Where(u => EF.Functions.ILike(u.Login, $"%{login}%"))
+                .Where(u => EF.Functions.ILike(u.Login, $"%{login}%") && u.IsDeleted != true)
                 .Select(u => new UserResponse(u.Login, u.Email))
                 .ToListAsync();
             if (matches.Count == 0)
@@ -58,22 +58,29 @@ namespace DigitalDistribution.Controllers
         {
             bool loginExists = await _context.Users.AnyAsync(u => u.Login == value.login);
             if (loginExists)
-                return Conflict("Login already exists");
+                return Conflict("Login already taken");
             bool emailExists = await _context.Users.AnyAsync(u => u.Email == value.email);
             if (emailExists)
-                return Conflict("Email already exists");
+                return Conflict("Email already taken");
             var passwordHash = _hasher.HashPassword(value.password);
-            User curUser = new User(value.login, value.email,  passwordHash);
-            _context.Users.Add(curUser);
-            await _context.SaveChangesAsync();
-            return Ok();
+            var curUser = new User(value.login, value.email,  passwordHash);
+            try
+            {
+                _context.Users.Add(curUser);
+                await _context.SaveChangesAsync();
+                return Created();
+            }
+            catch (DbUpdateException)
+            {
+                return Conflict("Login or email already taken.");
+            }
         }
 
         // PUT api/<UserController>/5
         [HttpPut("{id:guid}")]
         public async Task<ActionResult> Put(Guid id, [FromBody] UpdateUserRequest value)
         {
-            User? curUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            User? curUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.IsDeleted != true);
             if (curUser == null)
                 return NotFound();
             if(!String.IsNullOrEmpty(value.email))
@@ -91,19 +98,25 @@ namespace DigitalDistribution.Controllers
             if (!String.IsNullOrEmpty(value.password))
                 curUser.Password = _hasher.HashPassword(value.password);    
             await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
 
         // DELETE api/<UserController>/5
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            User? curUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            User? curUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.IsDeleted != true);
             if (curUser == null)
                 return NotFound();
-            _context.Users.Remove(curUser);
+            if (curUser.Role == UserRole.Admin)
+                return Conflict("User with admin role cannot be deleted");
+
+            curUser.IsDeleted = true;
+            curUser.Email = $"deleted_user_{curUser.Id.ToString()[..8]}@deleted.local";
+            curUser.Login = $"deleted_user_{curUser.Id.ToString()[..8]}";
+            curUser.Password = _hasher.HashPassword(Guid.NewGuid().ToString()[..8]);
             await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
     }
 }

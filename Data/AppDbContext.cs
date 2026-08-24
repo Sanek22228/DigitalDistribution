@@ -18,6 +18,16 @@ namespace DigitalDistribution.Data
             modelBuilder.Entity<Key>()
                 .Property(c => c.Status)
                 .HasConversion<int>();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Login)
+                .IsUnique()
+                .HasFilter("\"IsDeleted\" = false");
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique()
+                .HasFilter("\"IsDeleted\" = false");
+
             base.OnModelCreating(modelBuilder);
         }
     }

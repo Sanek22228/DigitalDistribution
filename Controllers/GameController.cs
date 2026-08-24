@@ -3,6 +3,7 @@ using DigitalDistribution.Data;
 using DigitalDistribution.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Threading.Tasks;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -21,7 +22,7 @@ namespace DigitalDistribution.Controllers
         [HttpGet]
         public async Task<ActionResult<List<GameResponse>>> Get()
         {
-            var games = await _context.Games.Select(g => new GameResponse(g.Name, g.Price)).ToListAsync();
+            var games = await _context.Games.Where(g => !g.IsDeleted).Select(g => new GameResponse(g.Name, g.Price)).ToListAsync();
             return Ok(games);
         }
 
@@ -29,18 +30,18 @@ namespace DigitalDistribution.Controllers
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<GameResponse>> Get(Guid id)
         {
-            var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == id);
+            var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == id && !g.IsDeleted);
             if(game == null)
                 return NotFound();
             return Ok(new GameResponse(game.Name, game.Price));
         }
 
-        // GET api/<Game>/name
-        [HttpGet("{name}")]
+        // GET api/<Game>/search/name
+        [HttpGet("search/{name}")]
         public async Task<ActionResult<List<GameResponse>>> Get(string name)
         {
             var games = await _context.Games
-                .Where(g => EF.Functions.ILike(g.Name, $"%{name}%"))
+                .Where(g => EF.Functions.ILike(g.Name, $"%{name}%") && !g.IsDeleted)
                 .Select(g => new GameResponse(g.Name, g.Price))
                 .ToListAsync();
 
@@ -54,28 +55,24 @@ namespace DigitalDistribution.Controllers
             Game newGame = new Game(game.name, game.price);
             _context.Games.Add(newGame);
             await _context.SaveChangesAsync();
-            return Ok();
+            return Created();
         }
 
         // PUT api/<Game>/5
         [HttpPut("{id:guid}")]
         public async Task<ActionResult> Put(Guid id, [FromBody] UpdateGameRequest game)
         {
-            var curGame = await _context.Games.FirstOrDefaultAsync(g => g.Id == id);
+            var curGame = await _context.Games.Where(g => !g.IsDeleted).FirstOrDefaultAsync(g => g.Id == id);
             if(curGame == null)
                 return NotFound();
             if (!String.IsNullOrEmpty(game.name))
             {
-                if (await _context.Games.AnyAsync(g => g.Name == game.name && g.Id != id))
-                    return Conflict("Game name is already taken");
-
                 curGame.Name = game.name;
-            }
-                
+            }   
             if (game.price.HasValue)
                 curGame.Price = game.price.Value;
             await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
 
         // DELETE api/<Game>/5
@@ -85,9 +82,13 @@ namespace DigitalDistribution.Controllers
             var game = await _context.Games.FirstOrDefaultAsync(g => g.Id.Equals(id));
             if (game == null)
                 return NotFound();
-            _context.Games.Remove(game);
+
+            game.IsDeleted = true;
+            await _context.Keys.Where(k => k.GameId == game.Id && k.Status == KeyStatus.Idle)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(k => k.Status, KeyStatus.Expired));
+            
             await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
     }
 }

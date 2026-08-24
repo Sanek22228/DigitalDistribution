@@ -17,7 +17,8 @@ namespace DigitalDistribution.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    Price = table.Column<decimal>(type: "numeric(10,2)", nullable: false)
+                    Price = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -32,7 +33,8 @@ namespace DigitalDistribution.Migrations
                     Login = table.Column<string>(type: "text", nullable: false),
                     Email = table.Column<string>(type: "text", nullable: false),
                     Password = table.Column<string>(type: "text", nullable: false),
-                    Role = table.Column<int>(type: "integer", nullable: false)
+                    Role = table.Column<int>(type: "integer", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -93,6 +95,12 @@ namespace DigitalDistribution.Migrations
                 column: "GameId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Keys_Value",
+                table: "Keys",
+                column: "Value",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Orders_KeyId",
                 table: "Orders",
                 column: "KeyId",
@@ -102,6 +110,20 @@ namespace DigitalDistribution.Migrations
                 name: "IX_Orders_UserId",
                 table: "Orders",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Email",
+                table: "Users",
+                column: "Email",
+                unique: true,
+                filter: "\"IsDeleted\" = false");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Login",
+                table: "Users",
+                column: "Login",
+                unique: true,
+                filter: "\"IsDeleted\" = false");
         }
 
         /// <inheritdoc />
