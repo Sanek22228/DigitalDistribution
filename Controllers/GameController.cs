@@ -22,7 +22,7 @@ namespace DigitalDistribution.Controllers
         [HttpGet]
         public async Task<ActionResult<List<GameResponse>>> Get()
         {
-            var games = await _context.Games.Where(g => !g.IsDeleted).Select(g => new GameResponse(g.Name, g.Price)).ToListAsync();
+            var games = await _context.Games.Where(g => !g.IsDeleted).Select(g => new GameResponse(g.Id, g.Name, g.Price)).ToListAsync();
             return Ok(games);
         }
 
@@ -33,7 +33,7 @@ namespace DigitalDistribution.Controllers
             var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == id && !g.IsDeleted);
             if(game == null)
                 return NotFound();
-            return Ok(new GameResponse(game.Name, game.Price));
+            return Ok(new GameResponse(game.Id, game.Name, game.Price));
         }
 
         // GET api/<Game>/search/name
@@ -41,8 +41,8 @@ namespace DigitalDistribution.Controllers
         public async Task<ActionResult<List<GameResponse>>> Get(string name)
         {
             var games = await _context.Games
-                .Where(g => EF.Functions.ILike(g.Name, $"%{name}%") && !g.IsDeleted)
-                .Select(g => new GameResponse(g.Name, g.Price))
+                .Where(g => EF.Functions.ILike(g.Name, $"{name}%") && !g.IsDeleted) // игры, начинающиеся с букв для поиска
+                .Select(g => new GameResponse(g.Id, g.Name, g.Price))
                 .ToListAsync();
 
             return Ok(games);

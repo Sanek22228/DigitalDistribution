@@ -18,7 +18,7 @@ namespace DigitalDistribution.Models
         public string Password { get; set; } = null!;
         public UserRole Role { get; set; } = UserRole.User;
         public bool IsDeleted { get; set; } = false;
-        public ICollection<Order>? Orders { get; set; } = new List<Order>();
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
     public enum UserRole
     {

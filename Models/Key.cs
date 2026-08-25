@@ -16,6 +16,7 @@ namespace DigitalDistribution.Models
         public string Value { get; set; } = null!;
         public KeyStatus Status { get; set; } = KeyStatus.Idle;
         public Order? Order { get; set; }
+        public Guid? OrderId { get; set; }
         public Game Game { get; set; } = null!;
         public Guid GameId { get; set; }
     }

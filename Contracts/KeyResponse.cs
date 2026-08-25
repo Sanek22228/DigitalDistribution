@@ -2,5 +2,5 @@
 
 namespace DigitalDistribution.Contracts
 {
-    public record KeyResponse(string value, KeyStatus status, Guid gameId);
+    public record KeyResponse(Guid id, string value, KeyStatus status, Guid gameId, string gameName, decimal price);
 }

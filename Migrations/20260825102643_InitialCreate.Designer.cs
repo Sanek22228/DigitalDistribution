@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DigitalDistribution.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260824134803_InitialCreate")]
+    [Migration("20260825102643_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -55,6 +55,9 @@ namespace DigitalDistribution.Migrations
                     b.Property<Guid>("GameId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -65,6 +68,8 @@ namespace DigitalDistribution.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GameId");
+
+                    b.HasIndex("OrderId");
 
                     b.HasIndex("Value")
                         .IsUnique();
@@ -81,9 +86,6 @@ namespace DigitalDistribution.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("KeyId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -94,9 +96,6 @@ namespace DigitalDistribution.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("KeyId")
-                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -148,24 +147,22 @@ namespace DigitalDistribution.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("DigitalDistribution.Models.Order", "Order")
+                        .WithMany("Keys")
+                        .HasForeignKey("OrderId");
+
                     b.Navigation("Game");
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("DigitalDistribution.Models.Order", b =>
                 {
-                    b.HasOne("DigitalDistribution.Models.Key", "Key")
-                        .WithOne("Order")
-                        .HasForeignKey("DigitalDistribution.Models.Order", "KeyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("DigitalDistribution.Models.User", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Key");
 
                     b.Navigation("User");
                 });
@@ -175,9 +172,9 @@ namespace DigitalDistribution.Migrations
                     b.Navigation("Keys");
                 });
 
-            modelBuilder.Entity("DigitalDistribution.Models.Key", b =>
+            modelBuilder.Entity("DigitalDistribution.Models.Order", b =>
                 {
-                    b.Navigation("Order");
+                    b.Navigation("Keys");
                 });
 
             modelBuilder.Entity("DigitalDistribution.Models.User", b =>

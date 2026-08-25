@@ -23,7 +23,7 @@ namespace DigitalDistribution.Controllers
         [HttpGet]
         public async Task<ActionResult<KeyResponse>> Get()
         {
-            var keys = await _context.Keys.OrderBy(k => k.GameId).Select(k => new KeyResponse(k.Value, k.Status, k.GameId)).ToListAsync();
+            var keys = await _context.Keys.OrderBy(k => k.GameId).Select(k => new KeyResponse(k.Id, k.Value, k.Status, k.GameId, k.Game.Name, k.Game.Price)).ToListAsync();
             return Ok(keys);
         }
 
@@ -31,22 +31,27 @@ namespace DigitalDistribution.Controllers
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<List<KeyResponse>>> Get(Guid id)
         {
-            var key = await _context.Keys.FirstOrDefaultAsync(k => k.Id == id);
+            var key = await _context.Keys.Include(k => k.Game).FirstOrDefaultAsync(k => k.Id == id);
             if (key == null)
                 return NotFound();
-            return Ok(new KeyResponse(key.Value, key.Status, key.GameId));
+            return Ok(new KeyResponse(key.Id, key.Value, key.Status, key.GameId, key.Game.Name, key.Game.Price));
         }
-        [HttpGet("{gameName}")]
-        public async Task<ActionResult<List<KeyResponse>>> Get(string gameName)
-        {
-            var keys = await _context.Keys.Include(k => k.Game).Where(k => k.Game.Name == gameName).OrderBy(k => k.GameId).Select(k => new KeyResponse(k.Value, k.Status, k.GameId)).ToListAsync();
-            return Ok(keys);
-        }
+        // нужно ли?
+        //[HttpGet("search/{gameName}")]
+        //public async Task<ActionResult<List<KeyResponse>>> Get(string gameName)
+        //{
+        //    var keys = await _context.Keys.Include(k => k.Game).Where(k => k.Game.Name == gameName).OrderBy(k => k.GameId).Select(k => new KeyResponse(k.Id, k.Value, k.Status, k.GameId, k.Game.Name, k.Game.Price)).ToListAsync();
+        //    return Ok(keys);
+        //}
         // POST api/<KeyController>
         [HttpPost]
         public async Task<ActionResult<KeyResponse>> Post([FromBody] KeyRequest value)
         {
-            while (true)
+            var game = await _context.Games.Where(g => !g.IsDeleted).FirstOrDefaultAsync(g => g.Id == value.gameId);
+            if (game == null)
+                return NotFound();
+            const int maxAttempts = 10;
+            for (int i = 0; i < maxAttempts; i++)
             {
                 // as the key value is unique we have to handle collision exception (DbUpdateConcurrencyException)
                 var keyValue = KeyGenerator.GenerateKey();
@@ -55,7 +60,7 @@ namespace DigitalDistribution.Controllers
                 {
                     _context.Keys.Add(key);
                     await _context.SaveChangesAsync();
-                    return Ok(new KeyResponse(key.Value, key.Status, key.GameId));
+                    return Ok(new KeyResponse(key.Id, key.Value, key.Status, key.GameId, game.Name, game.Price));
                 }
                 // when a DbUpdateException appears entity which caused it stays in ef core emory as added, so we have to detach it and try again in the while cicle
                 catch (DbUpdateException ex)
@@ -63,9 +68,6 @@ namespace DigitalDistribution.Controllers
                     _context.Entry(key).State = EntityState.Detached;
                     if (ex.InnerException is PostgresException pgEx)
                     {
-                        // 23503: insert or update on table "keys" violates foreign key constraint "keys_users_id_fkey"
-                        if (pgEx.SqlState == "23503")
-                            return NotFound("This game ID was not found.");
                         // 23505: duplicate key value violates unique constraint "value"
                         if (pgEx.SqlState == "23505")
                             continue;
@@ -73,6 +75,7 @@ namespace DigitalDistribution.Controllers
                     throw; // any other exception
                 }
             }
+            return BadRequest("Failed to generate a key value. Try again later");
         }
 
         // PUT api/<KeyController>/5
